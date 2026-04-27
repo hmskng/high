@@ -1,0 +1,122 @@
+Script started on Tuesday 24 March 2026 12:21:53 PM IST
+[23bcs103@mepcolinux ex8]$cat res.txt
+
+[23bcs103@mepcolinux ex8]$ls
+a.out  pr1.c  pr2.c
+[23bcs103@mepcolinux ex8]$cat pr1.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+int main() {
+    int i,j,N;
+    int *A,*B,*C;
+
+    printf("Enter size of array:");
+    scanf("%d",&N);
+
+    
+    A = (int*) malloc(N * sizeof(int));
+    B = (int*) malloc(N * sizeof(int));
+    C = (int*) malloc(N * sizeof(int));
+
+    for(i = 0; i < N; i++){
+	    A[i]=rand()%5;
+	    B[i]=rand()%5;
+    }
+
+
+    printf("Input:\nA: ");
+    for(i=0;i<N;i++){
+	    printf("%d ",A[i]);
+    }
+    printf("\nB: ");
+    for(i=0;i<N;i++){
+	    printf("%d ", B[i]);
+    }
+
+    
+    #pragma omp parallel for num_threads(10) 
+    for(i = 0; i < N; i++) {
+	    C[i] = A[i] + B[i];
+	    printf("%d",i);
+    }
+    printf("\nOutput:\nC: ");
+
+    
+    for(i = 0; i < N; i++) {
+	    printf("%d ",C[i]);
+    }
+
+    printf("\n");
+    
+    free(A);
+
+    return 0;
+}
+
+[23bcs103@mepcolinux ex8]$cc pr1.c -fopenmp
+[23bcs103@mepcolinux ex8]$./a.out
+Enter size of array:10
+Input:
+A: 3 2 3 1 4 2 0 3 0 2 
+B: 1 0 0 2 1 2 4 1 1 1 0862453917
+Output:
+C: 4 2 3 3 5 4 4 4 1 3 
+[23bcs103@mepcolinux ex8]$cat pr2.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <omp.h>
+
+int main() {
+    int i,N,CONST_VAL;
+    int *A;
+
+    printf("Enter no of elements:");
+    scanf("%d",&N);
+
+    
+    A = (int*) malloc(N * sizeof(int));
+
+    
+    for(i = 0; i < N; i++) {
+        A[i] = rand()%10;
+    }
+    printf("Enter const value to be added: ");
+    scanf("%d",&CONST_VAL);
+
+    printf("\nInput taken : ");
+    for(i = 0;i < N;i++){
+            printf("%d ",A[i]);
+    }
+
+    
+    #pragma omp parallel for
+    for(i = 0; i < N; i++) {
+        A[i] = A[i] + CONST_VAL;
+    }
+
+    
+    printf("\nOutput given: ");
+    for(i = 0; i < N; i++) {
+        printf("%d ", A[i]);
+    }
+
+    printf("\n");
+    
+    free(A);
+
+    return 0;
+}
+
+[23bcs103@mepcolinux ex8]$cc pr2.c -fopenmp
+[23bcs103@mepcolinux ex8]$./a.out
+Enter no of elements:10
+Enter const value to be added: 5
+
+Input taken : 3 6 7 5 3 5 6 2 9 1 
+Output given: 8 11 12 10 8 10 11 7 14 6 
+[23bcs103@mepcolinux ex8]$exit
+exit
+
+Script done on Tuesday 24 March 2026 12:21:58 PM IST

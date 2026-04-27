@@ -1,0 +1,82 @@
+Script started on Tuesday 03 February 2026 12:02:17 PM IST
+[23bcs103@mepcolinux ex3]$cat ex3.txt
+III-B1@gbl:~/103/ex3$ ls
+a.out  collective.c
+III-B1@gbl:~/103/ex3$ cat collective.c 
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <mpi.h>
+
+int main(int argc, char *argv[])
+{
+    int rank, size;
+    MPI_Init(&argc, &argv);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    MPI_Comm_size(MPI_COMM_WORLD, &size);
+    int N=100;
+    int local_n=N/size;
+    int local_count=0;
+    int search_number;
+    int global_count=0;
+    int *local_array = (int *)malloc(local_n * sizeof(int));
+    int *array = (int *)malloc(N * sizeof(int));
+    if (rank == 0)
+    {
+        printf("Generated Array: ");
+        for (int i = 0; i < N; i++)
+        {
+            array[i] = rand() % 10;
+            printf("%d ", array[i]);
+        }
+        printf("\nEnter number to search: ");
+        fflush(stdout);
+        scanf("%d", &search_number);
+    }
+    MPI_Bcast(&search_number, 1, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Scatter(array,local_n, MPI_INT,local_array,local_n, MPI_INT, 0, MPI_COMM_WORLD);
+    for (int i = 0; i < local_n; i++)
+    {
+        if (local_array[i] == search_number)
+            local_count++;
+    }
+
+    printf("Process %d received %d elements and  %d  occurs %d\n",rank, local_n, search_number,local_count);
+    MPI_Reduce(&local_count, &global_count, 1, MPI_INT,
+               MPI_SUM, 0, MPI_COMM_WORLD);
+    if (rank == 0)
+    {
+        printf("\nTotal frequency of %d = %d\n", search_number, global_count);
+        free(array);
+    }
+
+    free(local_array);
+    MPI_Finalize();
+    return 0;
+}
+
+
+III-B1@gbl:~/103/ex3$ ls
+a.out  collective.c
+III-B1@gbl:~/103/ex3$ mpicc collective.c 
+III-B1@gbl:~/103/ex3$ mpiexec -n 6 a.out
+
+
+
+
+
+Generated Array: 3 6 7 5 3 5 6 2 9 1 2 7 0 9 3 6 0 6 2 6 1 8 7 9 2 0 2 3 7 5 9 2 2 8 9 7 3 6 1 2 9 3 1 9 4 7 8 4 5 0 3 6 1 0 6 3 2 0 6 1 5 5 4 7 6 5 6 9 3 7 4 5 2 5 4 7 4 4 3 0 7 8 6 8 8 4 3 1 4 9 2 0 6 8 9 2 6 6 4 9 
+Enter number to search: 3
+Process 0 received 16 elements and  3  occurs 3
+Process 2 received 16 elements and  3  occurs 2
+Process 3 received 16 elements and  3  occurs 2
+Process 4 received 16 elements and  3  occurs 2
+Process 5 received 16 elements and  3  occurs 1
+Process 1 received 16 elements and  3  occurs 1
+
+Total frequency of 3 = 11
+
+[23bcs103@mepcolinux ex3]$exit
+exit
+
+Script done on Tuesday 03 February 2026 12:02:21 PM IST

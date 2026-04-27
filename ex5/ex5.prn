@@ -1,0 +1,256 @@
+Script started on Tuesday 03 March 2026 11:14:43 AM IST
+[23bcs103@mepcolinux ex5]$cat exercise5.txt
+student@gbl:~$ cat ex5.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
+
+#define MAX 10
+
+int A[MAX][MAX], B[MAX][MAX];
+int add[MAX][MAX], mul[MAX][MAX];
+int r1, c1, r2, c2;
+
+void *matrix_addition(void *arg)
+{
+    if (r1 != r2 || c1 != c2)
+    {
+        printf("\nMatrix Addition not possible\n");
+        pthread_exit(NULL);
+    }
+
+    for (int i = 0; i < r1; i++)
+    {
+        for (int j = 0; j < c1; j++)
+        {
+            add[i][j] = A[i][j] + B[i][j];
+        }
+    }
+
+    printf("\nMatrix Addition Result:\n");
+    for (int i = 0; i < r1; i++)
+    {
+        for (int j = 0; j < c1; j++)
+        {
+            printf("%d ", add[i][j]);
+        }
+        printf("\n");
+    }
+
+    pthread_exit(NULL);
+}
+
+void *matrix_multiplication(void *arg)
+{
+    if (c1 != r2)
+    {
+        printf("\nMatrix Multiplication not possible\n");
+        pthread_exit(NULL);
+    }
+
+    for (int i = 0; i < r1; i++)
+    {
+        for (int j = 0; j < c2; j++)
+        {
+            mul[i][j] = 0;
+            for (int k = 0; k < c1; k++)
+            {
+                mul[i][j] += A[i][k] * B[k][j];
+            }
+        }
+    }
+
+    printf("\nMatrix Multiplication Result:\n");
+    for (int i = 0; i < r1; i++)
+    {
+        for (int j = 0; j < c2; j++)
+        {
+            printf("%d ", mul[i][j]);
+        }
+        printf("\n");
+    }
+
+    pthread_exit(NULL);
+}
+
+int main()
+{
+    pthread_t t1, t2;
+
+    printf("Enter rows and columns of Matrix A: ");
+    scanf("%d %d", &r1, &c1);
+
+    printf("Enter elements of Matrix A:\n");
+    for (int i = 0; i < r1; i++)
+    {
+        for (int j = 0; j < c1; j++)
+        {
+            scanf("%d", &A[i][j]);
+        }
+    }
+
+    printf("Enter rows and columns of Matrix B: ");
+    scanf("%d %d", &r2, &c2);
+
+    printf("Enter elements of Matrix B:\n");
+    for (int i = 0; i < r2; i++)
+    {
+        for (int j = 0; j < c2; j++)
+        {
+            scanf("%d", &B[i][j]);
+        }
+    }
+
+    pthread_create(&t1, NULL, matrix_addition, NULL);
+    pthread_create(&t2, NULL, matrix_multiplication, NULL);
+
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    return 0;
+}
+
+
+student@gbl:~$ ls
+ 165        about.html   collatz.c   Downloads                         eclipse-workspace   ex5b.c                  hello        l       out        pr2.c    sum.c      'Unsaved Document 1'
+ 23bcs154  'about me'    data.c      eclipse                           ex2.c               ex5.c                   hello.c      mat     out3       pro.c    sumn.c      Videos
+ 23BCS184   a.out        Desktop     eclipse-installer                 ex3.c               Firefox_wallpaper.png   home1.html   mat.c   Pictures   Public   task.c
+ a          b            Documents   eclipse-inst-jre-linux64.tar.gz   ex4                 h.c                     home.html    Music   pr1.c      sum      Templates
+student@gbl:~$ cat ex5b.c
+#include <stdio.h>
+#include <pthread.h>
+
+void *print_world(void *arg) {
+    printf("HELLO WORLD\n");
+    pthread_exit(NULL);
+}
+
+int main() {
+    pthread_t t1, t2;
+    pthread_create(&t1, NULL, print_world, NULL);
+    pthread_create(&t2, NULL, print_world, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
+
+    return 0; 
+}
+
+
+student@gbl:~$ cat sumn.c
+
+#include <stdio.h>
+#include <pthread.h>
+#include <stdlib.h>
+
+#define MAX 100
+int arr[MAX];
+int total_sum = 0;
+pthread_mutex_t lock;
+
+typedef struct {
+    int start;
+    int end;
+    int local_sum; 
+} Data;
+
+void *sum_part(void *arg) {
+    Data *d = (Data *)arg;
+    d->local_sum = 0; 
+    for (int i = d->start; i < d->end; i++) {
+        d->local_sum += arr[i];
+    }
+    
+    pthread_mutex_lock(&lock);
+    total_sum += d->local_sum;
+    pthread_mutex_unlock(&lock);
+    return NULL;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        printf("Usage: %s <number_of_threads>\n", argv[0]);
+        return 1;
+    }
+
+    int num_threads = atoi(argv[1]);
+    int n;
+
+    printf("Enter number of elements: ");
+    scanf("%d", &n);
+    
+    if (num_threads > n) num_threads = n; 
+
+    for (int i = 0; i < n; i++) scanf("%d", &arr[i]);
+
+    pthread_t threads[num_threads];
+    Data thread_data[num_threads];
+    pthread_mutex_init(&lock, NULL);
+
+   
+    int step = n / num_threads;
+    for (int i = 0; i < num_threads; i++) {
+        thread_data[i].start = i * step;
+        
+       
+        if (i == num_threads - 1) {
+            thread_data[i].end = n;
+        } else {
+            thread_data[i].end = (i + 1) * step;
+        }
+
+        pthread_create(&threads[i], NULL, sum_part, &thread_data[i]);
+    }
+
+    for (int i = 0; i < num_threads; i++) {
+        pthread_join(threads[i], NULL);
+        printf("Thread %d (Range %d-%d) Local Sum: %d\n", 
+                i, thread_data[i].start, thread_data[i].end - 1, thread_data[i].local_sum);
+    }
+
+    pthread_mutex_destroy(&lock);
+    printf("--------------------------\nTotal Sum = %d\n", total_sum);
+    return 0;
+}
+
+student@gbl:~$ g++ mat.c -o b -lpthread
+student@gbl:~$ ./b
+Enter rows and columns of Matrix A: 3 3
+Enter elements of Matrix A:
+1 2 3 
+4 5 6
+7 8 9
+Enter rows and columns of Matrix B: 3 3
+Enter elements of Matrix B:
+1 2 3
+4 5 6
+7 8 9
+
+Matrix Addition Result:
+2 4 6 
+8 10 12 
+14 16 18 
+
+Matrix Multiplication Result:
+30 36 42 
+66 81 96 
+102 126 150 
+student@gbl:~$ g++ ex5b.c -o b -lpthread
+student@gbl:~$ ./b
+HELLO WORLD
+HELLO WORLD
+student@gbl:~$ g++ sumn.c -o b -lpthread
+student@gbl:~$ ./b
+Usage: ./b <number_of_threads>
+student@gbl:~$ ./b 2
+Enter number of elements: 11
+1 2 3 4 5 6 7 8 9 10 11
+Thread 0 (Range 0-4) Local Sum: 15
+Thread 1 (Range 5-10) Local Sum: 51
+--------------------------
+Total Sum = 66
+student@gbl:~$ 
+
+[23bcs103@mepcolinux ex5]$exit
+exit
+
+Script done on Tuesday 03 March 2026 11:14:49 AM IST

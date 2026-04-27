@@ -1,0 +1,137 @@
+III-B1@gbl:~$ cat ex4.c
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <mpi.h>
+
+#define FILE_NAME "input.txt"
+#define OUT_FILE "out.txt"
+#define N 8
+
+typedef struct {
+	char name[20];
+	char roll_no[10];
+	int marks;
+	char grade;
+} Student;
+
+char calculate_grade(int marks) {
+	if (marks >= 90) return 'A';
+	else if (marks >= 75) return 'B';
+	else if (marks >= 60) return 'C';
+	else if (marks >= 50) return 'D';
+	else return 'F';
+}
+
+int main(int argc, char** argv) {
+	int rank, size;
+	Student students[N];            
+	Student *local_students;        
+	MPI_Datatype mpi_student_type;  
+
+	MPI_Init(&argc, &argv);
+	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+	MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+	int block_lengths[4] = {20, 10, 1, 1};
+	MPI_Aint displacements[4];
+	MPI_Datatype types[4] = {MPI_CHAR, MPI_CHAR, MPI_INT, MPI_CHAR};
+
+	MPI_Get_address(&students[0].name, &displacements[0]);
+	MPI_Get_address(&students[0].roll_no, &displacements[1]);
+	MPI_Get_address(&students[0].marks, &displacements[2]);
+	MPI_Get_address(&students[0].grade, &displacements[3]);
+
+	for (int i = 3; i >= 0; i--) {
+		displacements[i] -= displacements[0];
+	}
+
+	MPI_Type_create_struct(4, block_lengths, displacements, types, &mpi_student_type);
+	MPI_Type_commit(&mpi_student_type);
+	if (rank == 0) {
+		FILE *fp = fopen(FILE_NAME, "r");
+		if (!fp) {
+			printf("Error opening input file.\n");
+			MPI_Abort(MPI_COMM_WORLD, 1);
+		}
+
+		printf("Rank 0: Reading file\n");
+		for (int i = 0; i < N; i++) {
+			fscanf(fp, "%s %s %d", students[i].name, students[i].roll_no, &students[i].marks);
+			students[i].grade = '-';
+		}
+		fclose(fp);
+	}
+
+	int elements_per_proc = N / size;
+	local_students = (Student *)malloc(sizeof(Student) * elements_per_proc);
+	
+	MPI_Scatter(students, elements_per_proc, mpi_student_type, local_students, elements_per_proc, mpi_student_type, 0, MPI_COMM_WORLD);
+
+	for (int i = 0; i < elements_per_proc; i++) {
+		local_students[i].grade = calculate_grade(local_students[i].marks);
+		printf("Rank %d : %s Marks: %d to  Grade: %c)\n", rank, local_students[i].name, local_students[i].marks, local_students[i].grade);
+	}
+
+	MPI_Gather(local_students, elements_per_proc, mpi_student_type, students, elements_per_proc, mpi_student_type, 0, MPI_COMM_WORLD);
+
+	if (rank == 0) {
+		FILE *fp_out = fopen(OUT_FILE, "w");
+		fprintf(fp_out, "Name\tRoll\t\tMarks\tGrade\n");
+		for (int i = 0; i < N; i++) {
+			fprintf(fp_out, "%s\t%s\t%d\t%c\n", students[i].name, students[i].roll_no, students[i].marks, students[i].grade);
+		}
+		fclose(fp_out);
+		printf("Rank 0: Results written to %s\n", OUT_FILE);
+	}
+
+	free(local_students);
+	MPI_Type_free(&mpi_student_type);
+	MPI_Finalize();
+	return 0;
+}
+
+
+III-B1@gbl:~$ mpiexec -n 4 ./a.out
+Rank 0: Reading file
+Rank 0 : Akash Marks: 89 to  Grade: B)
+Rank 0 : akilan Marks: 90 to  Grade: A)
+Rank 1 : arish Marks: 50 to  Grade: D)
+Rank 1 : balaji Marks: 85 to  Grade: B)
+Rank 2 : bala Marks: 99 to  Grade: A)
+Rank 2 : nishu Marks: 80 to  Grade: B)
+Rank 3 : haris Marks: 100 to  Grade: A)
+Rank 3 : john Marks: 90 to  Grade: A)
+Rank 0: Results written to out.txt
+III-B1@gbl:~$ mpiexec -n 3 ./a.out
+Rank 0: Reading file
+Rank 0 : Akash Marks: 89 to  Grade: B)
+Rank 0 : akilan Marks: 90 to  Grade: A)
+Rank 1 : arish Marks: 50 to  Grade: D)
+Rank 1 : balaji Marks: 85 to  Grade: B)
+Rank 2 : bala Marks: 99 to  Grade: A)
+Rank 2 : nishu Marks: 80 to  Grade: B)
+Rank 0: Results written to out.txt
+III-B1@gbl:~$ cat input.txt
+Akash 23bcs098 89
+akilan 23bcs099 90
+arish 23bcs100 50
+balaji 23bcs101 85
+bala 23bcs102 99
+nishu 23bcs110 80
+haris 23bcs104 100
+john 23bcs105 90
+student 23bcs999 0
+III-B1@gbl:~$ cat out.txt 
+Name	Roll		Marks	Grade
+Akash	23bcs098	89	B
+akilan	23bcs099	90	A
+arish	23bcs100	50	D
+balaji	23bcs101	85	B
+bala	23bcs102	99	A
+nishu	23bcs110	80	B
+haris	23bcs104	100	-
+john	23bcs105	90	-
+III-B1@gbl:~$ 
+
+
